@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from typing import Annotated
 from models import Todo
 from pydantic import BaseModel,Field
+from routers.auth import getcurrentuser
 router=APIRouter()
 def get_db():
     db=SessionLocal()
@@ -12,15 +13,13 @@ def get_db():
         yield db
     finally:
         db.close()
+user_depends=Annotated[dict,Depends(getcurrentuser)]
 db_depends=Annotated[Session,Depends(get_db)]
 class Todorequest(BaseModel):
  title:str=Field(min_length=3)
  description:str=Field(min_length=3)
  priority:int=Field(gt=0)
  completed:bool
-@router.get("/",status_code=status.HTTP_200_OK)
-async def read_all(db:db_depends):
-    return db.query(Todo).all()
 @router.get("/",status_code=status.HTTP_200_OK)
 async def read_all(db:db_depends):
     return db.query(Todo).all()
@@ -31,8 +30,11 @@ async def read_todo(db:db_depends,todo_id:int=Path(gt=0)):
         raise HTTPException(status_code=404,detail="Todo not found")
     return todo_mode
 @router.post("/add",status_code=status.HTTP_201_CREATED)
-async def add_todo(db:db_depends,todo:Todorequest):
-    new_todo=Todo(**todo.dict())
+async def add_todo(user:user_depends,db:db_depends,todo:Todorequest):
+    print("user",user)
+    if user is None:
+        raise HTTPException(status_code=401,detail="Unauthorized")
+    new_todo=Todo(**todo.dict(),ownerid=user["id"])
     db.add(new_todo)
     db.commit()
 @router.put("/udate/{todo_id}",status_code=status.HTTP_200_OK)

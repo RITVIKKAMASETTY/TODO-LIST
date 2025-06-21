@@ -58,8 +58,8 @@ class Createuser(BaseModel):
     password:str
     role:str
 class Token(BaseModel):
-    accesstoken:str
-    tokentype:str
+    access_token:str
+    token_type:str
 @router.post("/auth",status_code=status.HTTP_201_CREATED)
 async def create_user(db:db_depends,user:Createuser):
     new_user=User(
@@ -84,4 +84,4 @@ async def register_user(db:db_depends,form_data:Annotated[OAuth2PasswordRequestF
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Incorrect username or password")
     access_token_expires=timedelta(minutes=30)
     access_token=create_access_token(user.username,user.id,access_token_expires)
-    return {"accesstoken":access_token,"tokentype":"bearer"}
+    return {"access_token":access_token,"token_type":"bearer"}
