@@ -26,13 +26,14 @@ async def getcurrentuser(token:Annotated[str,Depends(oauth2bearer)]):
         payload=jwt.decode(token,SECRET_KEY,algorithms=[ALGORITHM])
         username:str=payload.get("sub")
         user_id:int=payload.get("id")
+        role:str=payload.get("role")
         if username is None or user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Invalid token")
-        return {"username":username,"id":user_id}
+        return {"username":username,"id":user_id,"role":role}
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Invalid token")
-def create_access_token(username:str,user_id:int,expires_delta:timedelta):
-    encode={"sub":username,"id":user_id}
+def create_access_token(username:str,user_id:int,role:str,expires_delta:timedelta):
+    encode={"sub":username,"id":user_id,"role":role}
     expires=datetime.now(timezone.utc)+expires_delta
     encode.update({"exp":expires})
     return jwt.encode(encode,SECRET_KEY,algorithm=ALGORITHM)
@@ -83,5 +84,22 @@ async def register_user(db:db_depends,form_data:Annotated[OAuth2PasswordRequestF
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Incorrect username or password")
     access_token_expires=timedelta(minutes=30)
-    access_token=create_access_token(user.username,user.id,access_token_expires)
+    access_token=create_access_token(user.username,user.id,user.role,access_token_expires)
     return {"access_token":access_token,"token_type":"bearer"}
+@router.post("/updateuser",status_code=status.HTTP_200_OK)
+async def update_user(db:db_depends,user:Createuser):
+    updated_user=db.query(User).filter(User.username==user.username).first()
+    if updated_user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User not found")
+    updated_user.email=user.email
+    updated_user.firstname=user.firstname
+    updated_user.lastname=user.lastname
+    updated_user.hashedpassword=bcryot_context.hash(user.password)
+    updated_user.role=user.role
+    try:
+        db.commit()
+    except IntegrityError as e:
+
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,detail="Error updating user")
+    return updated_user

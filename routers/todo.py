@@ -21,11 +21,15 @@ class Todorequest(BaseModel):
  priority:int=Field(gt=0)
  completed:bool
 @router.get("/",status_code=status.HTTP_200_OK)
-async def read_all(db:db_depends):
-    return db.query(Todo).all()
+async def read_all(db:db_depends,users:user_depends):
+    if(users is None):
+        raise HTTPException(status_code=401,detail="Unauthorized")
+    return db.query(Todo).filter(Todo.ownerid==users["id"]).all()
 @router.get("/todo/{todo_id}",status_code=status.HTTP_200_OK)
-async def read_todo(db:db_depends,todo_id:int=Path(gt=0)):
-    todo_mode=db.query(Todo).filter(Todo.id==todo_id).first()
+async def read_todo(users:user_depends,db:db_depends,todo_id:int=Path(gt=0)):
+    if(users is None):
+      raise HTTPException(status_code=401,detail="Unauthorized")
+    todo_mode=db.query(Todo).filter(Todo.id==todo_id).filter(Todo.ownerid==users["id"]).first()
     if todo_mode is None:
         raise HTTPException(status_code=404,detail="Todo not found")
     return todo_mode
@@ -38,8 +42,10 @@ async def add_todo(user:user_depends,db:db_depends,todo:Todorequest):
     db.add(new_todo)
     db.commit()
 @router.put("/udate/{todo_id}",status_code=status.HTTP_200_OK)
-async def update_todo(db:db_depends,todo:Todorequest,todo_id:int=Path(gt=0)):
-    updated_todo=db.query(Todo).filter(Todo.id==todo_id).first()
+async def update_todo(user:user_depends,db:db_depends,todo:Todorequest,todo_id:int=Path(gt=0)):
+    if user is None:
+        raise HTTPException(status_code=401,detail="Unauthorized")
+    updated_todo=db.query(Todo).filter(Todo.id==todo_id).filter(Todo.ownerid==user["id"]).first()
     if updated_todo is None:
         raise HTTPException(status_code=404,detail="Todo not found")
     updated_todo.title=todo.title
@@ -49,8 +55,10 @@ async def update_todo(db:db_depends,todo:Todorequest,todo_id:int=Path(gt=0)):
     db.commit()
     return updated_todo
 @router.delete("/delete/{todo_id}",status_code=status.HTTP_200_OK)
-async def delete_todo(db:db_depends,todo_id:int=Path(gt=0)):
-    deleted_todo=db.query(Todo).filter(Todo.id==todo_id).first()
+async def delete_todo(user:user_depends,db:db_depends,todo_id:int=Path(gt=0)):
+    if user is None:
+        raise HTTPException(status_code=401,detail="Unauthorized")
+    deleted_todo=db.query(Todo).filter(Todo.id==todo_id).filter(Todo.ownerid==user["id"]).first()
     if deleted_todo is None:
         raise HTTPException(status_code=404,detail="Todo not found")
     db.delete(deleted_todo)
