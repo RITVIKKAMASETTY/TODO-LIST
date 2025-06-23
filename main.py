@@ -12,6 +12,9 @@ from routers import admin
 from routers import users
 app=FastAPI()
 models.Base.metadata.create_all(bind=engine)
+@app.get("/healthy")
+def healthcheck():
+    return {"healthy":True}
 app.include_router(auth.router)
 app.include_router(todo.router)
 app.include_router(admin.router)
