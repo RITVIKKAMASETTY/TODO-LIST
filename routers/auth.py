@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, Depends, status, HTTPException
+from fastapi import FastAPI, APIRouter, Depends, status, HTTPException,Request
 from pydantic import BaseModel,Field
 from models import User
 from passlib.context import CryptContext
@@ -10,7 +10,7 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 import os
-
+from fastapi.templating import Jinja2Templates
 load_dotenv(".env")
 print(os.getenv("SECRET_KEY"))
 print(os.getenv("ALGORITHM"))
@@ -56,6 +56,21 @@ def get_db():
 
 
 db_depends = Annotated[Session, Depends(get_db)]
+
+templates=Jinja2Templates(directory="templates")
+
+#######pages#########
+@router.get("/login-page")
+def render_login_page(request:Request):
+    return templates.TemplateResponse("login.html",{"request":request})
+@router.get("/register-page")
+def render_register_page(request:Request):
+    return templates.TemplateResponse("register.html",{"request":request})
+
+
+
+
+
 
 
 def authenticateuser(db, username: str, password: str):
